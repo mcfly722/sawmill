@@ -11,3 +11,15 @@ User is not limited with Grok or RegExps notations. Instead he uses full JavaScr
 .\sawmill -config parser.js
 ```
 in <b>parser.js</b> you have to define all parsing logic and outputs.
+### creating your own parser.js
+```
+
+var src = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(false)
+
+var dst = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(getEnv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
+
+newLogFlow(src,parser,dst)
+
+)
+
+```
