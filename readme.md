@@ -8,7 +8,7 @@ User is not limited with Grok or RegExps notations. Instead he uses full JavaScr
 
 ### how to use
 ```
-.\sawmill -config parser.js
+.\sawmill -config parser.js -debug
 ```
 in <b>parser.js</b> you have to define all parsing logic and outputs.
 ### creating your own parser.js
@@ -16,7 +16,7 @@ in <b>parser.js</b> you have to define all parsing logic and outputs.
 
 var source = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(false)
 
-var influxDB = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(GetEnv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
+var influxDB = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(os.Getenv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
 
 function listOfParams2Map(params){
   const regexp = /(?<key>[^\s]+)=(?<value>.+?)(?=\s[^\s]+\=|$)/gm
@@ -37,4 +37,25 @@ function parser(str){
 stringByStringLogFlow(src, parser)
 
 ```
+### available API functions
+
+#### Console
+```
+console.log(msg string)
+console.debug(msg string)
+```
+#### Environment Varaiables
+```
+os.Getenv(variableName string)
+```
+#### Timing
+```
+current = time.Now()
+current.AddMS(AddMS long)
+loggedTime = time.Parse(layout string, time string)
+if loggedTime > time.Now().AddMS(60*1000) {
+  ...
+}
+```
+
 ### flattering json
