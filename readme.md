@@ -72,7 +72,7 @@ Format time back to string
 ```
 time.Format(layout string)
 ```
-### flattering json
+### flattening hierarchies
 On pushing object to destination there could be a tree object. If destination system does not support fields hierarchy (like InfluxDB/Elastic), all upper levels would be automatically flattened.<br>
 For example:
 Object is:
