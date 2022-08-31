@@ -13,11 +13,6 @@ User is not limited with Grok or RegExps notations. Instead, he uses full JavaSc
 in <b>parser.js</b> you have to define all parsing logic and outputs.
 ### creating your own parser.js
 ```
-
-var source = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(false)
-
-var influxDB = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(os.Getenv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
-
 function trimQuotes(str){
   return str.replace(/(^"|"$)/g, '').replace(/(^'|'$)/g, '')
 }
@@ -31,14 +26,25 @@ function listOfParams2Map(params){
   return result
 }
 
+# example
 # str = 'Aug 28 03:31:36 kub-test-node1 dockerd: time="2022-08-28T03:31:36.810790504+03:00" level=info msg="ignoring event" moudle=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"'
-function parser(str){
 
+function parser(str, writer){
+  obj = listOfParams2Map(str)
 
-  influxDB.PushToBatch(obj)
+  writer.Push(obj)
 }
 
-stringByStringLogFlow(src, parser)
+var source = TailsOfFiles("/var/log/messages")
+  .SetQueryIntervalSec(10)
+  .FromStart(false)
+
+InfluxDB("https://influx.local.domain:8696")
+  .SetAuthByToken(os.Getenv('AUTH_TOKEN'))
+  .BatchSize(100)
+  .MinIntervalSec(10)
+  .SetParser(parser)
+  .PullFrom(source)
 
 ```
 ### available API functions
