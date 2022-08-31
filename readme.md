@@ -62,7 +62,7 @@ loggedTime = time.Parse(time.RFC3339, time.Now())
 (all available standards are here: https://pkg.go.dev/time#pkg-constants)
 <br>
 
-Add to time Milliseconds
+Compare and Add Milliseconds
 ```
 if loggedTime > time.Now().AddMilliseconds(-60*1000) {
   ...write to log...
