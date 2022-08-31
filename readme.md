@@ -51,9 +51,17 @@ Obtain Environment Variable value.
 os.Getenv(variableName string)
 ```
 #### Timing
+Obtain current time
+```
+current = time.Now()
+```
 Parse time from string based on specified layout
 ```
-loggedTime = time.Parse(layout string, time string)
+loggedTime = time.Parse(layout string, time.Now())
+```
+Parse using RFC standard
+```
+loggedTime = time.Parse(time.RFC3339, time.Now())
 ```
 
 Add to time Milliseconds
