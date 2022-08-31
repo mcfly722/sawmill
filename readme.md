@@ -70,6 +70,28 @@ if loggedTime > time.Now().AddMilliseconds(-60*1000) {
 ```
 Format time back to string
 ```
-time.Format(layiut string)
+time.Format(layout string)
 ```
 ### flattering json
+On pushing object to destination there could be a tree object. If destination does not support fields hierarchy (f.e. Influx/Elastic) for upper levels of tierarchy automatically applied flattering.<br>
+ForExample:
+Object is:
+```
+{
+  "source":{
+    "podName" : "ping-test-1e8he",
+    "podIP" : "192.168.0.49"
+  },
+  "destination":{
+    "podName" : "ping-test-6845e",
+    "podIP" : "192.168.0.50"
+  }
+}
+```
+would be automatically converted to flatten list:
+{
+  "source.podName" : "ping-test-1e8he",
+  "source.podIP" : "192.168.0.49",
+  "destination.podName" : "ping-test-6845e",
+  "destination.podIP" : "192.168.0.50"
+}
