@@ -8,7 +8,7 @@ User is not limited with Grok or RegExps notations. Instead he uses full JavaScr
 
 ### how to use
 ```
-.\sawmill -config parser.js -debug
+.\sawmill -config parser.js
 ```
 in <b>parser.js</b> you have to define all parsing logic and outputs.
 ### creating your own parser.js
@@ -42,20 +42,28 @@ stringByStringLogFlow(src, parser)
 #### Console
 ```
 console.log(msg string)
-console.debug(msg string)
 ```
+writes message to output
+
 #### Environment Varaiables
+Obtain Environment Variable value.
 ```
 os.Getenv(variableName string)
 ```
 #### Timing
+Parse time from string based on specified layout
 ```
-current = time.Now()
-current.AddMS(AddMS long)
 loggedTime = time.Parse(layout string, time string)
-if loggedTime > time.Now().AddMS(60*1000) {
-  ...
-}
 ```
 
+Add to time Milliseconds
+```
+if loggedTime > time.Now().AddMS(-60*1000) {
+  ...write to log...
+}
+```
+Format time back to string
+```
+time.Format(layiut string)
+```
 ### flattering json
