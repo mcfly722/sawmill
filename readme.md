@@ -53,7 +53,7 @@ os.Getenv(variableName string)
 #### Timing
 Parse time from string based on specified layout
 ```
-loggedTime = time.Parse(layout string, time.Now())
+loggedTime = time.Parse("01/02 03:04:05PM '06 -0700", time.Now())
 ```
 Parse using RFC standard
 ```
@@ -70,7 +70,7 @@ if loggedTime > time.Now().AddMilliseconds(-60*1000) {
 ```
 Format time back to string
 ```
-time.Format(layout string)
+time.Format("01/02 03:04:05PM '06 -0700")
 ```
 ### flattening hierarchies
 On pushing object to destination there could be a tree object. If destination system does not support fields hierarchy (like InfluxDB/Elastic), all upper levels would be automatically flattened.<br>
