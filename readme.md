@@ -18,11 +18,15 @@ var source = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(fa
 
 var influxDB = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(os.Getenv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
 
+function trimQuotes(str){
+  return str.replace(/(^"|"$)/g, '').replace(/(^'|'$)/g, '')
+}
+
 function listOfParams2Map(params){
   const regexp = /(?<key>[^\s]+)=(?<value>.+?)(?=\s[^\s]+\=|$)/gm
   result = {}  
-  for(const m of (params.matchAll(regexp))){
-    result[m[1]]=m[2].replace(/(^"|"$)/g, '')
+  for(m of (params.matchAll(regexp))){
+    result[m.groups.key]=trimQuotes(m.groups.value)
   }
   return result
 }
