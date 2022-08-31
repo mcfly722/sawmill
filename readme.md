@@ -14,9 +14,9 @@ in <b>parser.js</b> you have to define all parsing logic and outputs.
 ### creating your own parser.js
 ```
 
-var src = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(false)
+var source = FileTails("/var/log/messages").SetQueryIntervalSec(10).FromStart(false)
 
-var dst = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(GetEnv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
+var influxDB = InfluxDB("https://influx.local.domain:8696").SetAuthByToken(GetEnv('AUTH_TOKEN')).BatchSize(100).MinIntervalSec(10)
 
 function listOfParams2Map(params){
   const regexp = /(?<key>[^\s]+)=(?<value>.+?)(?=\s[^\s]+\=|$)/gm
@@ -31,9 +31,10 @@ function listOfParams2Map(params){
 function parser(str){
 
 
-
+  influxDB.PushToBatch(obj)
 }
 
-newLogFlow(src,parser,dst)
+stringByStringLogFlow(src, parser)
+
 ```
 ### flattering json
