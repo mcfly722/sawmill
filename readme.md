@@ -58,7 +58,7 @@ loggedTime = time.Parse(layout string, time string)
 
 Add to time Milliseconds
 ```
-if loggedTime > time.Now().AddMS(-60*1000) {
+if loggedTime > time.Now().AddMilliseconds(-60*1000) {
   ...write to log...
 }
 ```
