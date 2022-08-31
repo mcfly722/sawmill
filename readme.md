@@ -73,7 +73,7 @@ Format time back to string
 time.Format(layout string)
 ```
 ### flattering json
-On pushing object to destination there could be a tree object. If destination does not support fields hierarchy (f.e. Influx/Elastic) for upper levels of tierarchy automatically applied flattering.<br>
+On pushing object to destination there could be a tree object. If destination system does not support fields hierarchy (like InfluxDB/Elastic), all upper levels would be automatically flattened.<br>
 For example:
 Object is:
 ```
@@ -88,7 +88,7 @@ Object is:
   }
 }
 ```
-would be automatically converted to flatten list:
+would be automatically flattened to:
 ```
 {
   "source.podName" : "ping-test-1e8he",
@@ -97,7 +97,7 @@ would be automatically converted to flatten list:
   "destination.podIP" : "192.168.0.50"
 }
 ```
-If some field have array type, it would be automatically typecasted to string using JSON notation.<br>
+If some field have array type, it would be automatically type-casted to string using JSON notation.<br>
 For example:
 ```
 {
