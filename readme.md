@@ -74,7 +74,7 @@ time.Format(layout string)
 ```
 ### flattering json
 On pushing object to destination there could be a tree object. If destination does not support fields hierarchy (f.e. Influx/Elastic) for upper levels of tierarchy automatically applied flattering.<br>
-ForExample:
+For example:
 Object is:
 ```
 {
@@ -89,9 +89,24 @@ Object is:
 }
 ```
 would be automatically converted to flatten list:
+```
 {
   "source.podName" : "ping-test-1e8he",
   "source.podIP" : "192.168.0.49",
   "destination.podName" : "ping-test-6845e",
   "destination.podIP" : "192.168.0.50"
 }
+```
+If some field have array type, it would be automatically typecasted to string using JSON notation.<br>
+For example:
+```
+{
+  "TestArray":[1,2,3,{"some":"object"}]
+}
+```
+would be automatically converted to:
+```
+{
+  "TestArray":"[1,2,3,{\"some\":\"object\"}]"
+}
+```
