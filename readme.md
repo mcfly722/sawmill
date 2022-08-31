@@ -51,10 +51,6 @@ Obtain Environment Variable value.
 os.Getenv(variableName string)
 ```
 #### Timing
-Obtain current time
-```
-current = time.Now()
-```
 Parse time from string based on specified layout
 ```
 loggedTime = time.Parse(layout string, time.Now())
@@ -63,6 +59,8 @@ Parse using RFC standard
 ```
 loggedTime = time.Parse(time.RFC3339, time.Now())
 ```
+(all available standards are here: https://pkg.go.dev/time#pkg-constants)
+<br>
 
 Add to time Milliseconds
 ```
