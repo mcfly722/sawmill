@@ -4,7 +4,7 @@
 Module reads log files, tries to parse it with specified JavaScript custom parser and sends it to warehouse (InfluxDB/ElasticSearch).<br><br>
 Key advantage is to use JavaScript language for parsing.<br><br>
 Parsing function obtain line by line, combines them together with required logic and outputs complete objects to warehouse.
-User is not limited with Grok or RegExps notations. Instead, he uses full JavaScript language power.<br> 
+User is not limited with Grok or RegExps notations. Instead, he uses full JavaScript language power.<br>
 
 ### how to use
 ```
@@ -29,22 +29,22 @@ function listOfParams2Map(params){
 # example
 # str = 'Aug 28 03:31:36 kub-test-node1 dockerd: time="2022-08-28T03:31:36.810790504+03:00" level=info msg="ignoring event" moudle=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"'
 
-function parser(str, writer){
-  obj = listOfParams2Map(str)
-
-  writer.Push(obj)
-}
-
-var source = TailsOfFiles("/var/log/messages")
-  .SetQueryIntervalSec(10)
-  .FromStart(false)
-
-InfluxDB("https://influx.local.domain:8696")
+var influxDB = InfluxDB("https://influx.local.domain:8696")
   .SetAuthByToken(os.Getenv('AUTH_TOKEN'))
   .BatchSize(100)
-  .MinIntervalSec(10)
-  .SetParser(parser)
-  .PullFrom(source)
+  .BatchesQueueSize(100)
+  .DelaysBetweenSendingMS(1000)
+  .Start()
+
+function parser(str){
+    obj = listOfParams2Map(str)
+    influxDB.Push(obj)
+}
+
+TailOfFile("/var/log/messages")
+  .SetQueryIntervalMS(10000)
+  .FromStart(false)
+  .StartWithParser(parser)
 
 ```
 ### available API functions

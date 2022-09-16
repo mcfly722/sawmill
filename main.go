@@ -2,25 +2,34 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"log"
 	"os"
 	"os/signal"
 
+	"github.com/dop251/goja"
 	"github.com/mcfly722/goPackages/context"
+	"github.com/mcfly722/goPackages/jsEngine"
 )
 
 var (
-	logNameFlag *string
+	pluginFileName string
+	pluginBody     string
 )
 
 func main() {
-	logNameFlag = flag.String("logName", "log", "JavaScript plugin")
+	{ // obtain input parameters
+		pluginFlag := flag.String("plugin", "plugin.js", "JavaScript plugin")
 
-	flag.Parse()
+		flag.Parse()
 
-	logName := *logNameFlag
+		pluginFileName = *pluginFlag
 
-	fmt.Println(fmt.Sprintf("%s", logName))
+		body, err := os.ReadFile(pluginFileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pluginBody = string(body)
+	}
 
 	rootContext := context.NewRootContext(context.NewConsoleLogDebugger(100, true))
 
@@ -34,9 +43,19 @@ func main() {
 		rootContext.Cancel()
 	}()
 
-	reader := newWorkflow(newTailFileReader(logName, 1000))
+	{ // starting JavaScript plugin EventLoop
+		scripts := []jsEngine.Script{jsEngine.NewScript(pluginFileName, string(pluginBody))}
+		eventLoop := jsEngine.NewEventLoop(goja.New(), scripts)
 
-	rootContext.NewContextFor(reader, "workflow", "workflow")
+		eventLoop.Import(jsEngine.Console{})
+		eventLoop.Import(jsEngine.Scheduler{})
+		eventLoop.Import(FilesTails{})
+
+		_, err := rootContext.NewContextFor(eventLoop, pluginFileName, "eventLoop")
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	rootContext.Wait()
 
