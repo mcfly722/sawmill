@@ -2,7 +2,7 @@
 //  Console.Log("tick!")
 //}).Start()
 
-function parser(str){
+function messagesParser(str){
   Console.Log(str)
 }
 
@@ -10,10 +10,15 @@ function onNewLogFound(file) {
   Console.Log(str)
 }
 
+
+var influxDB = InfluxDB.NewConnection("https://localhost:8086").Start()
+
+var parser = Parser.NewString2JSObject(messagesParser).SendTo(influxDB)
+
 var watcher = FilesTails.NewWatcher("log")
   .SetFilesPath("../")
   .SetRelistFilesIntervalMS(1000)
   .SetReadFileIntervalMS(1000)
-  .StartWithParser(parser)
+  .SendTo(parser)
 
 Console.Log("started")

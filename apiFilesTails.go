@@ -21,8 +21,8 @@ type FilesTails struct {
 	runtime   *goja.Runtime
 }
 
-// FilesTailsWatcher ...
-type FilesTailsWatcher struct {
+// FilesTailsWatcherConfig ...
+type FilesTailsWatcherConfig struct {
 	api                   *FilesTails
 	filesPath             string
 	filesMask             string
@@ -31,14 +31,14 @@ type FilesTailsWatcher struct {
 	queueStringsSize      int64
 }
 
-// StartedFilesTailsWatcher ...
-type StartedFilesTailsWatcher struct {
+// FilesTailsWatcher ...
+type FilesTailsWatcher struct {
 	api                   *FilesTails
 	filesPath             string
 	filesMask             string
 	relistFilesIntervalMS int64
 	readFileIntervalMS    int64
-	parser                *goja.Callable
+	receiver              InputStringReceiver
 
 	input chan string
 	files map[string]*fileTailWatcher
@@ -56,8 +56,8 @@ func (filesTails FilesTails) Constructor(context context.Context, eventLoop jsEn
 }
 
 // NewWatcher ...
-func (filesTails *FilesTails) NewWatcher(filesMask string) *FilesTailsWatcher {
-	return &FilesTailsWatcher{
+func (filesTails *FilesTails) NewWatcher(filesMask string) *FilesTailsWatcherConfig {
+	return &FilesTailsWatcherConfig{
 		api:                   filesTails,
 		filesMask:             filesMask,
 		filesPath:             "",
@@ -68,107 +68,109 @@ func (filesTails *FilesTails) NewWatcher(filesMask string) *FilesTailsWatcher {
 }
 
 // SetFilesPath ...
-func (tailsWatcher *FilesTailsWatcher) SetFilesPath(path string) *FilesTailsWatcher {
+func (tailsWatcher *FilesTailsWatcherConfig) SetFilesPath(path string) *FilesTailsWatcherConfig {
 	tailsWatcher.filesPath = path
 	return tailsWatcher
 }
 
 // SetRelistFilesIntervalMS ...
-func (tailsWatcher *FilesTailsWatcher) SetRelistFilesIntervalMS(intervalMS int64) *FilesTailsWatcher {
+func (tailsWatcher *FilesTailsWatcherConfig) SetRelistFilesIntervalMS(intervalMS int64) *FilesTailsWatcherConfig {
 	tailsWatcher.relistFilesIntervalMS = intervalMS
 	return tailsWatcher
 }
 
 // SetReadFileIntervalMS ...
-func (tailsWatcher *FilesTailsWatcher) SetReadFileIntervalMS(intervalMS int64) *FilesTailsWatcher {
+func (tailsWatcher *FilesTailsWatcherConfig) SetReadFileIntervalMS(intervalMS int64) *FilesTailsWatcherConfig {
 	tailsWatcher.readFileIntervalMS = intervalMS
 	return tailsWatcher
 }
 
 // SetQueueStringsSize ...
-func (tailsWatcher *FilesTailsWatcher) SetQueueStringsSize(size int64) *FilesTailsWatcher {
+func (tailsWatcher *FilesTailsWatcherConfig) SetQueueStringsSize(size int64) *FilesTailsWatcherConfig {
 	tailsWatcher.queueStringsSize = size
 	return tailsWatcher
 }
 
-// StartWithParser ...
-func (tailsWatcher *FilesTailsWatcher) StartWithParser(parser *goja.Callable) *StartedFilesTailsWatcher {
+// SendTo ...
+func (tailsWatcher *FilesTailsWatcherConfig) SendTo(receiver InputStringReceiver) *FilesTailsWatcher {
 
-	startedWatcher := &StartedFilesTailsWatcher{
+	watcher := &FilesTailsWatcher{
 		api:                   tailsWatcher.api,
 		filesPath:             tailsWatcher.filesPath,
 		filesMask:             tailsWatcher.filesMask,
 		relistFilesIntervalMS: tailsWatcher.relistFilesIntervalMS,
 		readFileIntervalMS:    tailsWatcher.readFileIntervalMS,
-		parser:                parser,
+		receiver:              receiver,
 
 		files: make(map[string]*fileTailWatcher),
 		input: make(chan string, tailsWatcher.queueStringsSize),
 	}
 
-	_, err := tailsWatcher.api.context.NewContextFor(startedWatcher, fmt.Sprintf("%v(%v)", startedWatcher.filesPath, startedWatcher.filesMask), "filesWatcher")
+	_, err := receiver.getContext().NewContextFor(watcher, fmt.Sprintf("%v(%v)", watcher.filesPath, watcher.filesMask), "filesWatcher")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	return startedWatcher
+	return watcher
 }
 
-func (startedFilesTailsWatcher *StartedFilesTailsWatcher) appendNotExistingFilesToWatch(current context.Context, filesNames []string) {
-	startedFilesTailsWatcher.ready.Lock()
+func (filesTailsWatcher *FilesTailsWatcher) appendNotExistingFilesToWatch(current context.Context, filesNames []string) {
+	filesTailsWatcher.ready.Lock()
 
 	for _, fileName := range filesNames {
-		if _, found := startedFilesTailsWatcher.files[fileName]; !found {
+		if _, found := filesTailsWatcher.files[fileName]; !found {
 
-			watcher := newFileTailWatcher(startedFilesTailsWatcher.filesPath, fileName, startedFilesTailsWatcher.readFileIntervalMS, startedFilesTailsWatcher.input, func() {
-				startedFilesTailsWatcher.deleteFileWatcher(fileName)
+			watcher := newFileTailWatcher(filesTailsWatcher.filesPath, fileName, filesTailsWatcher.readFileIntervalMS, filesTailsWatcher.input, func() {
+				filesTailsWatcher.deleteFileWatcher(fileName)
 			})
 
-			startedFilesTailsWatcher.files[fileName] = watcher
+			filesTailsWatcher.files[fileName] = watcher
 
 			current.NewContextFor(watcher, fileName, "fileTailWatcher")
 		}
 	}
 
-	startedFilesTailsWatcher.ready.Unlock()
+	filesTailsWatcher.ready.Unlock()
 }
 
-func (startedFilesTailsWatcher *StartedFilesTailsWatcher) deleteFileWatcher(fileName string) {
-	startedFilesTailsWatcher.ready.Lock()
-	if _, found := startedFilesTailsWatcher.files[fileName]; found {
-		delete(startedFilesTailsWatcher.files, fileName)
+func (filesTailsWatcher *FilesTailsWatcher) deleteFileWatcher(fileName string) {
+	filesTailsWatcher.ready.Lock()
+	if _, found := filesTailsWatcher.files[fileName]; found {
+		delete(filesTailsWatcher.files, fileName)
 	}
-	startedFilesTailsWatcher.ready.Unlock()
+	filesTailsWatcher.ready.Unlock()
 }
 
 // Go ...
-func (startedFilesTailsWatcher *StartedFilesTailsWatcher) Go(current context.Context) {
+func (filesTailsWatcher *FilesTailsWatcher) Go(current context.Context) {
 loop:
 	for {
 		select {
-		case <-time.After(time.Duration(startedFilesTailsWatcher.relistFilesIntervalMS) * time.Millisecond):
+		case <-time.After(time.Duration(filesTailsWatcher.relistFilesIntervalMS) * time.Millisecond):
 			{ // query list of files that match to mask, and add them to dictionary
-				fullFilesPath, err := filepath.Abs(startedFilesTailsWatcher.filesPath)
+				fullFilesPath, err := filepath.Abs(filesTailsWatcher.filesPath)
 				if err != nil {
 					current.Log(err)
 				} else {
-					relativeFileNames, err := recursiveFilesSearch(fullFilesPath, fullFilesPath, startedFilesTailsWatcher.filesMask)
+					relativeFileNames, err := recursiveFilesSearch(fullFilesPath, fullFilesPath, filesTailsWatcher.filesMask)
 					if err != nil {
 						current.Log(err)
 					} else {
-						startedFilesTailsWatcher.appendNotExistingFilesToWatch(current, relativeFileNames)
+						filesTailsWatcher.appendNotExistingFilesToWatch(current, relativeFileNames)
 					}
 				}
 			}
 			break
-		case line := <-startedFilesTailsWatcher.input:
-			jsLine := startedFilesTailsWatcher.api.runtime.ToValue(line)
-			_, err := startedFilesTailsWatcher.api.eventLoop.CallHandler(startedFilesTailsWatcher.parser, jsLine)
-			if err != nil {
-				current.Log(51, err.Error())
-				current.Cancel()
-			}
-
+		case line := <-filesTailsWatcher.input:
+			filesTailsWatcher.receiver.getInput() <- line
+			/*
+				jsLine := filesTailsWatcher.api.runtime.ToValue(line)
+				_, err := filesTailsWatcher.api.eventLoop.CallHandler(filesTailsWatcher.parser, jsLine)
+				if err != nil {
+					current.Log(51, err.Error())
+					current.Cancel()
+				}
+			*/
 			break
 		case _, opened := <-current.Opened():
 			if !opened {

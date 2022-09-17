@@ -49,6 +49,8 @@ func main() {
 
 		eventLoop.Import(jsEngine.Console{})
 		eventLoop.Import(jsEngine.Scheduler{})
+		eventLoop.Import(InfluxDB{})
+		eventLoop.Import(Parser{})
 		eventLoop.Import(FilesTails{})
 
 		_, err := rootContext.NewContextFor(eventLoop, pluginFileName, "eventLoop")
