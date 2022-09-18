@@ -1,17 +1,46 @@
-//var ticker = Scheduler.NewTicker(1*1000, function(){
-//  Console.Log("tick!")
-//}).Start()
+function trimQuotes(str){
+  return str.replace(/(^"|"$)/g, '').replace(/(^'|'$)/g, '')
+}
+
+function listOfParams2Map(params){
+  const regexp = /(?<key>[^\s]+)=(?<value>.+?)(?=\s[^\s]+\=|$)/gm
+  result = {}
+  for(m of (params.matchAll(regexp))){
+    result[m[1]]=trimQuotes(m[2])
+  }
+  return result
+}
 
 function messagesParser(str){
-  Console.Log(str)
+
+  if (!(str === "")) {
+    var obj = listOfParams2Map(str)
+    return {
+      Measurement: "testMeasurement",
+      Tags: {
+        node:"node1",
+        process:"proc"
+      },
+      Fields: obj,
+      Timestamp: obj.time
+    }
+  }
 }
 
-function onNewLogFound(file) {
-  Console.Log(str)
-}
-
-
-var influxDB = InfluxDB.NewConnection("https://localhost:8086").Start()
+var influxDB = InfluxDB.NewConnection("http://localhost:8086")
+  .SetAuthByToken(OS.Getenv("INFLUXDB_TOKEN"))
+  .SetOrganization("home")
+  .SetBucket("NewBucket")
+  .SetSendMaxBatchSize(3)
+  .SetSendTimeoutMS(2000)
+  .SetSendIntervalMS(5000)
+  .OnSendError(function(errorMsg, batch){
+    Console.Log("error:"+errorMsg+" (batchSize="+batch.length+")")
+  })
+  .OnSendSuccess(function(batch){
+    Console.Log("success send (batchSize="+batch.length+")")
+  })
+  .Start()
 
 var parser = Parser.NewString2JSObject(messagesParser).SendTo(influxDB)
 

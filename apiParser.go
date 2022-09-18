@@ -81,7 +81,13 @@ loop:
 	for {
 		select {
 		case line := <-string2JSObject.input:
-			string2JSObject.receiver.getInput() <- string2JSObject.api.runtime.ToValue(line)
+			jsLine := string2JSObject.api.runtime.ToValue(line)
+			result, err := string2JSObject.api.eventLoop.CallHandler(string2JSObject.handler, jsLine)
+			if err != nil {
+				current.Log(51, err.Error())
+				break
+			}
+			string2JSObject.receiver.getInput() <- string2JSObject.api.runtime.ToValue(result)
 			break
 		case _, opened := <-current.Opened():
 			if !opened {

@@ -163,14 +163,6 @@ loop:
 			break
 		case line := <-filesTailsWatcher.input:
 			filesTailsWatcher.receiver.getInput() <- line
-			/*
-				jsLine := filesTailsWatcher.api.runtime.ToValue(line)
-				_, err := filesTailsWatcher.api.eventLoop.CallHandler(filesTailsWatcher.parser, jsLine)
-				if err != nil {
-					current.Log(51, err.Error())
-					current.Cancel()
-				}
-			*/
 			break
 		case _, opened := <-current.Opened():
 			if !opened {

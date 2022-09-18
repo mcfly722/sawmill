@@ -52,6 +52,7 @@ func main() {
 		eventLoop.Import(InfluxDB{})
 		eventLoop.Import(Parser{})
 		eventLoop.Import(FilesTails{})
+		eventLoop.Import(OperatingSystem{})
 
 		_, err := rootContext.NewContextFor(eventLoop, pluginFileName, "eventLoop")
 		if err != nil {

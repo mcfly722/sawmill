@@ -1,12 +1,17 @@
 package main
 
 import (
-	"fmt"
+	originalContext "context"
 	"log"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/mcfly722/goPackages/context"
 	"github.com/mcfly722/goPackages/jsEngine"
+
+	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
+	influxdb2api "github.com/influxdata/influxdb-client-go/v2/api"
+	influxdb2write "github.com/influxdata/influxdb-client-go/v2/api/write"
 )
 
 // InfluxDB ...
@@ -16,18 +21,43 @@ type InfluxDB struct {
 	runtime   *goja.Runtime
 }
 
+// JSInfluxDBPoint ...
+type JSInfluxDBPoint struct {
+	Measurement string
+	Tags        map[string]string
+	Fields      map[string]interface{}
+	Timestamp   time.Time
+}
+
 // InfluxDBConnectionConfig ...
 type InfluxDBConnectionConfig struct {
-	api *InfluxDB
-	url string
+	api            *InfluxDB
+	url            string
+	token          string
+	org            string
+	bucket         string
+	maxBatchSize   int
+	sendTimeoutMS  int64
+	sendIntervalMS int64
+	onSendError    *goja.Callable
+	onSendSuccess  *goja.Callable
 }
 
 // InfluxDBConnection ...
 type InfluxDBConnection struct {
 	api     *InfluxDB
-	url     string
 	input   chan goja.Value
 	current context.Context
+
+	sendTimeoutMS  int64
+	sendIntervalMS int64
+	maxBatchSize   int
+
+	onSendError   *goja.Callable
+	onSendSuccess *goja.Callable
+
+	influxClient   influxdb2.Client
+	influxWriteAPI influxdb2api.WriteAPIBlocking
 }
 
 // Constructor ...
@@ -42,20 +72,84 @@ func (influxDB InfluxDB) Constructor(context context.Context, eventLoop jsEngine
 // NewConnection ...
 func (influxDB *InfluxDB) NewConnection(url string) *InfluxDBConnectionConfig {
 	return &InfluxDBConnectionConfig{
-		api: influxDB,
-		url: url,
+		api:            influxDB,
+		url:            url,
+		token:          "",
+		org:            "",
+		bucket:         "",
+		maxBatchSize:   256,
+		sendTimeoutMS:  2000,
+		sendIntervalMS: 3000,
 	}
 }
 
+// SetAuthByToken ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetAuthByToken(token string) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.token = token
+	return influxDBConnectionConfig
+}
+
+// SetOrganization ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetOrganization(org string) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.org = org
+	return influxDBConnectionConfig
+}
+
+// SetBucket ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetBucket(bucket string) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.bucket = bucket
+	return influxDBConnectionConfig
+}
+
+// SetSendMaxBatchSize ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetSendMaxBatchSize(size int) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.maxBatchSize = size
+	return influxDBConnectionConfig
+}
+
+// SetSendTimeoutMS ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetSendTimeoutMS(timeoutMS int64) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.sendTimeoutMS = timeoutMS
+	return influxDBConnectionConfig
+}
+
+// SetSendIntervalMS ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) SetSendIntervalMS(intervalMS int64) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.sendIntervalMS = intervalMS
+	return influxDBConnectionConfig
+}
+
+// OnSendError ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) OnSendError(handler *goja.Callable) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.onSendError = handler
+	return influxDBConnectionConfig
+}
+
+// OnSendSuccess ...
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) OnSendSuccess(handler *goja.Callable) *InfluxDBConnectionConfig {
+	influxDBConnectionConfig.onSendSuccess = handler
+	return influxDBConnectionConfig
+}
+
 // Start ...
-func (config *InfluxDBConnectionConfig) Start() *InfluxDBConnection {
+func (influxDBConnectionConfig *InfluxDBConnectionConfig) Start() *InfluxDBConnection {
+
+	client := influxdb2.NewClient(influxDBConnectionConfig.url, influxDBConnectionConfig.token)
+	writeAPI := client.WriteAPIBlocking(influxDBConnectionConfig.org, influxDBConnectionConfig.bucket)
+
 	connection := &InfluxDBConnection{
-		api:   config.api,
-		url:   config.url,
-		input: make(chan goja.Value, 1024),
+		api:            influxDBConnectionConfig.api,
+		sendTimeoutMS:  influxDBConnectionConfig.sendTimeoutMS,
+		sendIntervalMS: influxDBConnectionConfig.sendIntervalMS,
+		maxBatchSize:   influxDBConnectionConfig.maxBatchSize,
+		onSendError:    influxDBConnectionConfig.onSendError,
+		onSendSuccess:  influxDBConnectionConfig.onSendSuccess,
+		influxClient:   client,
+		influxWriteAPI: writeAPI,
+		input:          make(chan goja.Value, 1024),
 	}
 
-	context, err := config.api.context.NewContextFor(connection, connection.url, "InfluxDB Connection")
+	context, err := influxDBConnectionConfig.api.context.NewContextFor(connection, influxDBConnectionConfig.url, "InfluxDB Connection")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -73,18 +167,95 @@ func (connection *InfluxDBConnection) getInput() chan goja.Value {
 	return connection.input
 }
 
+func sendBatch(writeAPI influxdb2api.WriteAPIBlocking, timeoutMS int64, batch []*influxdb2write.Point) error {
+
+	if len(batch) == 0 {
+		return nil
+	}
+
+	ctx, cancel := originalContext.WithTimeout(originalContext.Background(), time.Duration(timeoutMS)*time.Millisecond)
+	defer cancel()
+
+	err := writeAPI.WritePoint(ctx, batch...)
+
+	return err
+}
+
+func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.Point, error) {
+
+	point := &JSInfluxDBPoint{}
+	err := runtime.ExportTo(object, &point)
+	if err != nil {
+		return nil, err
+	}
+
+	return influxdb2.NewPoint(
+		point.Measurement,
+		point.Tags,
+		point.Fields,
+		point.Timestamp), nil
+}
+
 // Go ...
 func (connection *InfluxDBConnection) Go(current context.Context) {
+	batch := []*influxdb2write.Point{}
+
 loop:
 	for {
-		select {
-		case object := <-connection.input:
-			current.Log(fmt.Sprintf("influx: %v", object))
-			break
-		case _, opened := <-current.Opened():
-			if !opened {
-				break loop
+
+	collectBatch:
+		for {
+			select {
+			case <-time.After(time.Duration(connection.sendIntervalMS) * time.Millisecond):
+				break collectBatch
+			case object := <-connection.input:
+				if object != goja.Undefined() {
+					point, err := jsObject2Point(connection.api.runtime, object)
+					if err != nil {
+						current.Log(err)
+						break
+					}
+
+					batch = append(batch, point)
+
+					if len(batch) >= connection.maxBatchSize {
+						break collectBatch
+					}
+
+				}
+				break
+			case _, opened := <-current.Opened():
+				if !opened {
+					break loop
+				}
+			}
+		}
+
+	sendBatch:
+		for len(batch) > 0 {
+			select {
+			case <-time.After(time.Duration(connection.sendIntervalMS) * time.Millisecond):
+				err := sendBatch(connection.influxWriteAPI, connection.sendTimeoutMS, batch)
+				if err != nil {
+					if connection.onSendError != nil {
+						connection.api.eventLoop.CallHandler(connection.onSendError, connection.api.runtime.ToValue(err), connection.api.runtime.ToValue(batch))
+					}
+				} else {
+
+					if connection.onSendSuccess != nil {
+						connection.api.eventLoop.CallHandler(connection.onSendSuccess, connection.api.runtime.ToValue(batch))
+					}
+
+					batch = []*influxdb2write.Point{}
+					break sendBatch
+				}
+			case _, opened := <-current.Opened():
+				if !opened {
+					break loop
+				}
 			}
 		}
 	}
+
+	connection.influxClient.Close()
 }
