@@ -1,8 +1,23 @@
+// parser for /var/log/messages Centos 7
+//
+// sample of string:
+// Aug 28 03:31:36 kub-test-node1 dockerd: time="2022-08-28T03:31:36.810790504+03:00" level=info msg="ignoring event" moudle=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
+
+
+function getTags(params){
+  const regexp = /(?<key>[^\s:]+)/gm
+  result = []
+  for(m of (params.matchAll(regexp))){
+    result.push(m[0])
+  }
+  return result
+}
+
 function trimQuotes(str){
   return str.replace(/(^"|"$)/g, '').replace(/(^'|'$)/g, '')
 }
 
-function listOfParams2Map(params){
+function getFields(params){
   const regexp = /(?<key>[^\s]+)=(?<value>.+?)(?=\s[^\s]+\=|$)/gm
   result = {}
   for(m of (params.matchAll(regexp))){
@@ -14,23 +29,28 @@ function listOfParams2Map(params){
 function messagesParser(str){
 
   if (!(str === "")) {
-    var obj = listOfParams2Map(str)
-    return {
+
+    var tags = getTags(str)
+    var fields = getFields(str)
+
+    result = {
       Measurement: "testMeasurement",
       Tags: {
-        node:"node1",
-        process:"proc"
+        node:tags[5],
+        process:tags[6]
       },
-      Fields: obj,
-      Timestamp: obj.time
+      Fields: fields,
+      Timestamp: Date.parse(fields.time)
     }
+
+    return result
   }
 }
 
 var influxDB = InfluxDB.NewConnection("http://localhost:8086")
   .SetAuthByToken(OS.Getenv("INFLUXDB_TOKEN"))
   .SetOrganization("home")
-  .SetBucket("NewBucket")
+  .SetBucket("NewBucket3")
   .SetSendMaxBatchSize(3)
   .SetSendTimeoutMS(2000)
   .SetSendIntervalMS(5000)

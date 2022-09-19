@@ -2,6 +2,7 @@ package main
 
 import (
 	originalContext "context"
+	"fmt"
 	"log"
 	"time"
 
@@ -26,7 +27,7 @@ type JSInfluxDBPoint struct {
 	Measurement string
 	Tags        map[string]string
 	Fields      map[string]interface{}
-	Timestamp   time.Time
+	Timestamp   goja.Value
 }
 
 // InfluxDBConnectionConfig ...
@@ -181,6 +182,22 @@ func sendBatch(writeAPI influxdb2api.WriteAPIBlocking, timeoutMS int64, batch []
 	return err
 }
 
+func timeFromMsec(msec int64) time.Time {
+	sec := msec / 1000
+	nsec := (msec % 1000) * 1e6
+	return time.Unix(sec, nsec)
+}
+
+func jsObject2Time(object goja.Value) (result time.Time, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("%v", p)
+		}
+	}()
+	timestamp := timeFromMsec(object.Export().(int64))
+	return timestamp, err
+}
+
 func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.Point, error) {
 
 	point := &JSInfluxDBPoint{}
@@ -189,11 +206,19 @@ func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.P
 		return nil, err
 	}
 
+	timestamp, err := jsObject2Time(point.Timestamp)
+	if err != nil {
+		//fmt.Println(fmt.Sprintf("TIME stamp error: %v", err))
+		return nil, err
+	}
+
+	//fmt.Println(fmt.Sprintf("TIMESTAMP: %v", timestamp))
+
 	return influxdb2.NewPoint(
 		point.Measurement,
 		point.Tags,
 		point.Fields,
-		point.Timestamp), nil
+		timestamp), nil
 }
 
 // Go ...
