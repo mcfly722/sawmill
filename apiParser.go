@@ -17,8 +17,9 @@ type Parser struct {
 
 // String2JSObjectConfig ...
 type String2JSObjectConfig struct {
-	api     *Parser
-	handler *goja.Callable
+	api              *Parser
+	handler          *goja.Callable
+	queueStringsSize int64
 }
 
 // String2JSObject ...
@@ -42,9 +43,16 @@ func (parser Parser) Constructor(context context.Context, eventLoop jsEngine.Eve
 // NewString2JSObject ...
 func (parser *Parser) NewString2JSObject(handler *goja.Callable) *String2JSObjectConfig {
 	return &String2JSObjectConfig{
-		api:     parser,
-		handler: handler,
+		api:              parser,
+		handler:          handler,
+		queueStringsSize: 256,
 	}
+}
+
+// SetQueueStringsSize ...
+func (string2JSObject *String2JSObjectConfig) SetQueueStringsSize(size int64) *String2JSObjectConfig {
+	string2JSObject.queueStringsSize = size
+	return string2JSObject
 }
 
 // SendTo ...
@@ -53,7 +61,7 @@ func (string2JSObject *String2JSObjectConfig) SendTo(receiver InputJSObjectRecei
 	parser := &String2JSObject{
 		api:      string2JSObject.api,
 		handler:  string2JSObject.handler,
-		input:    make(chan string, 1024),
+		input:    make(chan string, string2JSObject.queueStringsSize),
 		receiver: receiver,
 	}
 

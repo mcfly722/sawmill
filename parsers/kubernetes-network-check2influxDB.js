@@ -25,10 +25,11 @@ function messagesParser(str){
             "Destination.PodIP"   :ping.Destination.PodIP,
             "Destination.HostName":ping.Destination.HostName,
             "Destination.HostIP"  :ping.Destination.HostIP,
+            "Success"             :ping.Success
+
           },
           Fields: {
-            "Elapsed_ms" :ping.Elapsed_ms,
-            "Success"    :ping.Success
+            "Elapsed_ms" :ping.Elapsed_ms
           },
           Timestamp: Date.parse(kubernetes.time)
         }
@@ -55,12 +56,15 @@ var influxDB = InfluxDB.NewConnection(OS.Getenv("INFLUXDB_URL"))
   })
   .Start()
 
-var parser = Parser.NewString2JSObject(messagesParser).SendTo(influxDB)
+var parser = Parser.NewString2JSObject(messagesParser)
+  .SetQueueStringsSize(25600)
+  .SendTo(influxDB)
 
 var watcher = FilesTails.NewWatcher("kubernetes-network-check-*.log")
   .SetFilesPath("/var/log/containers")
   .SetRelistFilesIntervalMS(10000)
   .SetReadFileIntervalMS(5000)
+  .SetQueueStringsSize(25600)
   .SendTo(parser)
 
 Console.Log("/var/log/containers/kubernetes-network-check-*.log -> InfluxDB parser started")
