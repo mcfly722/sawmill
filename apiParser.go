@@ -67,16 +67,25 @@ func (string2JSObject *String2JSObjectConfig) SendTo(receiver InputJSObjectRecei
 	return parser
 }
 
-func (string2JSObject *String2JSObject) getInput() chan string {
-	return string2JSObject.input
-}
-
 func (string2JSObject *String2JSObject) getContext() context.Context {
 	return string2JSObject.current
 }
 
+func (string2JSObject *String2JSObject) send(object string) {
+	defer func() {
+		recover()
+	}()
+	string2JSObject.input <- object
+}
+
 // Go ...
 func (string2JSObject *String2JSObject) Go(current context.Context) {
+
+	// close input channel, if closing
+	current.SetOnBeforeClosing(func(c context.Context) {
+		close(string2JSObject.input)
+	})
+
 loop:
 	for {
 		select {
@@ -87,7 +96,9 @@ loop:
 				current.Log(51, err.Error())
 				break
 			}
-			string2JSObject.receiver.getInput() <- string2JSObject.api.runtime.ToValue(result)
+
+			string2JSObject.receiver.send(string2JSObject.api.runtime.ToValue(result))
+
 			break
 		case _, opened := <-current.Opened():
 			if !opened {

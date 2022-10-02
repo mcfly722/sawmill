@@ -9,7 +9,7 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.10.1-0.20220916092814-41d5f3233d61 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect
-	github.com/mcfly722/goPackages/context v0.0.0-20220709214858-9b64b3501881 // indirect
+	github.com/mcfly722/goPackages/context v0.0.0-20221002101216-6539da77cc99 // indirect
 	github.com/mcfly722/goPackages/jsEngine v0.0.0-20220709214858-9b64b3501881 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/net v0.0.0-20210119194325-5f4716e94777 // indirect

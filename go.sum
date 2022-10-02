@@ -47,6 +47,8 @@ github.com/mattn/go-isatty v0.0.9/go.mod h1:YNRxwqDuOph6SZLI9vUUz6OYw3QyUt7WiY2y
 github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Kysco4FUpU=
 github.com/mcfly722/goPackages/context v0.0.0-20220709214858-9b64b3501881 h1:aXvRl2bT7CcJp/Krhexdw4nuU5s4U2h1fyQ4EMBd1P8=
 github.com/mcfly722/goPackages/context v0.0.0-20220709214858-9b64b3501881/go.mod h1:i38+RCkeReJo5SgIE5Le8fJZHCwp7QgnZic9yrUMFJY=
+github.com/mcfly722/goPackages/context v0.0.0-20221002101216-6539da77cc99 h1:FBHy0CCwUyavzAP+IKYlk4V/FhXo/3Slqlw37t++GNk=
+github.com/mcfly722/goPackages/context v0.0.0-20221002101216-6539da77cc99/go.mod h1:i38+RCkeReJo5SgIE5Le8fJZHCwp7QgnZic9yrUMFJY=
 github.com/mcfly722/goPackages/jsEngine v0.0.0-20220709214858-9b64b3501881 h1:EBufB13Qz0G/4mCl4SjNyy6I9QtVynLHbbio83ssIIc=
 github.com/mcfly722/goPackages/jsEngine v0.0.0-20220709214858-9b64b3501881/go.mod h1:r3YVsjmbn8UU6QFAX+DtSAaCx1as5ffLEbObQzqXVoI=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

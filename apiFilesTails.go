@@ -162,7 +162,7 @@ loop:
 			}
 			break
 		case line := <-filesTailsWatcher.input:
-			filesTailsWatcher.receiver.getInput() <- line
+			filesTailsWatcher.receiver.send(line)
 			break
 		case _, opened := <-current.Opened():
 			if !opened {

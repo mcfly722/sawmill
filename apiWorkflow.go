@@ -8,11 +8,11 @@ import (
 // InputJSObjectReceiver ...
 type InputJSObjectReceiver interface {
 	getContext() context.Context
-	getInput() chan goja.Value
+	send(object goja.Value)
 }
 
 // InputStringReceiver ...
 type InputStringReceiver interface {
 	getContext() context.Context
-	getInput() chan string
+	send(object string)
 }

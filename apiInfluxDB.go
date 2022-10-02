@@ -164,8 +164,11 @@ func (connection *InfluxDBConnection) getContext() context.Context {
 	return connection.current
 }
 
-func (connection *InfluxDBConnection) getInput() chan goja.Value {
-	return connection.input
+func (connection *InfluxDBConnection) send(object goja.Value) {
+	defer func() {
+		recover()
+	}()
+	connection.input <- object
 }
 
 func sendBatch(writeAPI influxdb2api.WriteAPIBlocking, timeoutMS int64, batch []*influxdb2write.Point) error {
@@ -224,6 +227,10 @@ func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.P
 // Go ...
 func (connection *InfluxDBConnection) Go(current context.Context) {
 	batch := []*influxdb2write.Point{}
+
+	current.SetOnBeforeClosing(func(c context.Context) {
+		close(connection.input)
+	})
 
 loop:
 	for {
