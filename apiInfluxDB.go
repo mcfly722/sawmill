@@ -241,7 +241,7 @@ loop:
 			case <-time.After(time.Duration(connection.sendIntervalMS) * time.Millisecond):
 				break collectBatch
 			case object := <-connection.input:
-				if object != goja.Undefined() {
+				if object != goja.Undefined() && object != nil {
 					point, err := jsObject2Point(connection.api.runtime, object)
 					if err != nil {
 						current.Log(err)

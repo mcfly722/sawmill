@@ -71,6 +71,13 @@ func continueToReadFileByStrings(filePath string, fileName string, lastOffset in
 	return file.Seek(0, io.SeekCurrent)
 }
 
+func (fileTailWatcher *fileTailWatcher) send(line string) {
+	defer func() {
+		recover()
+	}()
+	fileTailWatcher.input <- line
+}
+
 // Go ...
 func (fileTailWatcher *fileTailWatcher) Go(current context.Context) {
 	lastOffset := int64(0)
@@ -84,7 +91,7 @@ loop:
 			duration = time.Duration(fileTailWatcher.readFileIntervalMS) * time.Millisecond // after first start we change interval dutation to required
 
 			newOffset, err := continueToReadFileByStrings(fileTailWatcher.filePath, fileTailWatcher.fileName, lastOffset, func(line string) {
-				fileTailWatcher.input <- line
+				fileTailWatcher.send(line)
 			})
 
 			if err != nil {

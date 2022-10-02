@@ -1,6 +1,6 @@
 // parser for /var/log/messages Centos 7
 //
-// sample of string:
+// sample:
 // Aug 28 03:31:36 kub-test-node1 dockerd: time="2022-08-28T03:31:36.810790504+03:00" level=info msg="ignoring event" moudle=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
 
 
@@ -37,7 +37,7 @@ function messagesParser(str){
 
     if ((new Date(fields.time)).getTime() > Date.now() - parseMessagesOnlyForLastNSeconds * 1000) {
       result = {
-        Measurement: "testMeasurement",
+        Measurement: "/var/log/messages",
         Tags: {
           node:tags[5],
           process:tags[6]
@@ -51,11 +51,11 @@ function messagesParser(str){
   }
 }
 
-var influxDB = InfluxDB.NewConnection("http://localhost:8086")
+var influxDB = InfluxDB.NewConnection(OS.Getenv("INFLUXDB_URL"))
   .SetAuthByToken(OS.Getenv("INFLUXDB_TOKEN"))
-  .SetOrganization("home")
-  .SetBucket("NewBucket3")
-  .SetSendMaxBatchSize(3)
+  .SetOrganization(OS.Getenv("INFLUXDB_ORGANIZATION"))
+  .SetBucket(OS.Getenv("INFLUXDB_BUCKET"))
+  .SetSendMaxBatchSize(3000)
   .SetSendTimeoutMS(2000)
   .SetSendIntervalMS(5000)
   .OnSendError(function(errorMsg, batch){
@@ -68,10 +68,10 @@ var influxDB = InfluxDB.NewConnection("http://localhost:8086")
 
 var parser = Parser.NewString2JSObject(messagesParser).SendTo(influxDB)
 
-var watcher = FilesTails.NewWatcher("log")
-  .SetFilesPath("../")
+var watcher = FilesTails.NewWatcher("messages")
+  .SetFilesPath("/var/log")
   .SetRelistFilesIntervalMS(1000)
   .SetReadFileIntervalMS(1000)
   .SendTo(parser)
 
-Console.Log("started")
+Console.Log("/var/log/messages -> InfluxDB parser started")

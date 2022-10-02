@@ -143,6 +143,12 @@ func (filesTailsWatcher *FilesTailsWatcher) deleteFileWatcher(fileName string) {
 
 // Go ...
 func (filesTailsWatcher *FilesTailsWatcher) Go(current context.Context) {
+
+	// close input channel, if closing
+	current.SetOnBeforeClosing(func(c context.Context) {
+		close(filesTailsWatcher.input)
+	})
+
 loop:
 	for {
 		select {
