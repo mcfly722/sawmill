@@ -59,8 +59,8 @@ var parser = Parser.NewString2JSObject(messagesParser).SendTo(influxDB)
 
 var watcher = FilesTails.NewWatcher("kubernetes-network-check-*.log")
   .SetFilesPath("/var/log/containers")
-  .SetRelistFilesIntervalMS(1000)
-  .SetReadFileIntervalMS(1000)
+  .SetRelistFilesIntervalMS(10000)
+  .SetReadFileIntervalMS(5000)
   .SendTo(parser)
 
 Console.Log("/var/log/containers/kubernetes-network-check-*.log -> InfluxDB parser started")
