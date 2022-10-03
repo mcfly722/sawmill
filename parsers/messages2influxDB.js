@@ -39,8 +39,8 @@ function messagesParser(str){
       result = {
         Measurement: "/var/log/messages",
         Tags: {
-          node:tags[5],
-          process:tags[6]
+          "node"        :tags[5],
+          "process"     :tags[6]
         },
         Fields: fields,
         Timestamp: Date.parse(fields.time)

@@ -17,6 +17,7 @@ function messagesParser(str){
         result = {
           Measurement: "kubernetes-network-check",
           Tags: {
+            "ClusterName"         :OS.Getenv("CLUSTER_NAME"),
             "Source.PodName"      :ping.Source.PodName,
             "Source.PodIP"        :ping.Source.PodIP,
             "Source.HostName"     :ping.Source.HostName,
