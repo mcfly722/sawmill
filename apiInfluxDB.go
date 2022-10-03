@@ -4,6 +4,7 @@ import (
 	originalContext "context"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	"github.com/dop251/goja"
@@ -222,7 +223,9 @@ func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.P
 	fields := make(map[string]interface{})
 
 	for key, element := range point.Fields {
-		fields[key] = element
+		if !math.IsNaN(element) { // skip NaN's
+			fields[key] = element
+		}
 	}
 
 	return influxdb2.NewPoint(
