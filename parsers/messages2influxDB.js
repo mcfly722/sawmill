@@ -35,20 +35,28 @@ function messagesParser(str){
     var tags = getTags(str)
     var fields = getFields(str)
 
+    var activeTags = {
+      "node"        :tags[5],
+      "process"     :tags[6]
+    }
+
+    for (key in fields) {
+      activeTags[key] = fields[key]
+    }
+
     if ((new Date(fields.time)).getTime() > Date.now() - parseMessagesOnlyForLastNSeconds * 1000) {
+
       result = {
         Measurement: "/var/log/messages",
-        Tags: {
-          "node"        :tags[5],
-          "process"     :tags[6]
-        },
-        Fields: fields,
+        Tags: activeTags,
+        Fields: {"zero":0},
         Timestamp: Date.parse(fields.time)
       }
 
       return result
     }
   }
+  
 }
 
 var influxDB = InfluxDB.NewConnection(OS.Getenv("INFLUXDB_URL"))
