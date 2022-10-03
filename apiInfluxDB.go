@@ -26,7 +26,7 @@ type InfluxDB struct {
 type JSInfluxDBPoint struct {
 	Measurement string
 	Tags        map[string]string
-	Fields      map[string]interface{}
+	Fields      map[string]float64
 	Timestamp   goja.Value
 }
 
@@ -217,10 +217,18 @@ func jsObject2Point(runtime *goja.Runtime, object goja.Value) (*influxdb2write.P
 
 	//fmt.Println(fmt.Sprintf("TIMESTAMP: %v", timestamp))
 
+	// FIX: failure writing points to database: partitial write: field type conflict: input field "..." or measurement is type integer, already exists as type float
+	// (we forcebly casting all fields values to float64 and then to interface{})
+	fields := make(map[string]interface{})
+
+	for key, element := range point.Fields {
+		fields[key] = element
+	}
+
 	return influxdb2.NewPoint(
 		point.Measurement,
 		point.Tags,
-		point.Fields,
+		fields,
 		timestamp), nil
 }
 
