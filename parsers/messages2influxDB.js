@@ -41,7 +41,9 @@ function messagesParser(str){
     }
 
     for (key in fields) {
-      activeTags[key] = fields[key]
+      if (!(key === "time")) {
+        activeTags[key] = fields[key]
+      }
     }
 
     if ((new Date(fields.time)).getTime() > Date.now() - parseMessagesOnlyForLastNSeconds * 1000) {
@@ -56,7 +58,7 @@ function messagesParser(str){
       return result
     }
   }
-  
+
 }
 
 var influxDB = InfluxDB.NewConnection(OS.Getenv("INFLUXDB_URL"))
