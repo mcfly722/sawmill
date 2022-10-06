@@ -246,57 +246,65 @@ func (connection *InfluxDBConnection) Go(current context.Context) {
 loop:
 	for {
 
-	collectBatch:
-		for {
-			select {
-			case <-time.After(time.Duration(connection.sendIntervalMS) * time.Millisecond):
-				break collectBatch
-			case object := <-connection.input:
-				if object != goja.Undefined() && object != nil {
-					point, err := jsObject2Point(connection.api.runtime, object)
-					if err != nil {
-						current.Log(err)
-						break
+		{
+			ticker := time.NewTicker(time.Duration(connection.sendIntervalMS) * time.Millisecond)
+		collectBatch:
+			for {
+				select {
+				case <-ticker.C:
+					break collectBatch
+				case object := <-connection.input:
+					if object != goja.Undefined() && object != nil {
+						point, err := jsObject2Point(connection.api.runtime, object)
+						if err != nil {
+							current.Log(err)
+							break
+						}
+
+						batch = append(batch, point)
+
+						if len(batch) >= connection.maxBatchSize {
+							break collectBatch
+						}
+
 					}
-
-					batch = append(batch, point)
-
-					if len(batch) >= connection.maxBatchSize {
-						break collectBatch
+					break
+				case _, opened := <-current.Opened():
+					if !opened {
+						break loop
 					}
-
-				}
-				break
-			case _, opened := <-current.Opened():
-				if !opened {
-					break loop
 				}
 			}
+			ticker.Stop()
 		}
 
-	sendBatch:
-		for len(batch) > 0 {
-			select {
-			case <-time.After(time.Duration(connection.sendIntervalMS) * time.Millisecond):
-				err := sendBatch(connection.influxWriteAPI, connection.sendTimeoutMS, batch)
-				if err != nil {
-					if connection.onSendError != nil {
-						connection.api.eventLoop.CallHandler(connection.onSendError, connection.api.runtime.ToValue(err), connection.api.runtime.ToValue(batch))
-					}
-				} else {
+		{
+			ticker := time.NewTicker(time.Duration(connection.sendIntervalMS) * time.Millisecond)
+		sendBatch:
+			for len(batch) > 0 {
+				select {
+				case <-ticker.C:
+					err := sendBatch(connection.influxWriteAPI, connection.sendTimeoutMS, batch)
+					if err != nil {
+						if connection.onSendError != nil {
+							connection.api.eventLoop.CallHandler(connection.onSendError, connection.api.runtime.ToValue(err), connection.api.runtime.ToValue(batch))
+						}
+					} else {
 
-					if connection.onSendSuccess != nil {
-						connection.api.eventLoop.CallHandler(connection.onSendSuccess, connection.api.runtime.ToValue(batch))
-					}
+						if connection.onSendSuccess != nil {
+							connection.api.eventLoop.CallHandler(connection.onSendSuccess, connection.api.runtime.ToValue(batch))
+						}
 
-					batch = []*influxdb2write.Point{}
-					break sendBatch
-				}
-			case _, opened := <-current.Opened():
-				if !opened {
-					break loop
+						batch = []*influxdb2write.Point{}
+						break sendBatch
+					}
+				case _, opened := <-current.Opened():
+					if !opened {
+						break loop
+					}
 				}
 			}
+			ticker.Stop()
 		}
 	}
 

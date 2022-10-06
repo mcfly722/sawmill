@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -82,13 +81,12 @@ func (fileTailWatcher *fileTailWatcher) send(line string) {
 func (fileTailWatcher *fileTailWatcher) Go(current context.Context) {
 	lastOffset := int64(0)
 
-	duration := time.Duration(rand.Int63n(fileTailWatcher.readFileIntervalMS)) * time.Millisecond
+	ticker := time.NewTicker(time.Duration(fileTailWatcher.readFileIntervalMS) * time.Millisecond)
 
 loop:
 	for {
 		select {
-		case <-time.After(duration): // we do not use Ticker here because it can't start immediately, always need to wait interval
-			duration = time.Duration(fileTailWatcher.readFileIntervalMS) * time.Millisecond // after first start we change interval dutation to required
+		case <-ticker.C:
 
 			newOffset, err := continueToReadFileByStrings(fileTailWatcher.filePath, fileTailWatcher.fileName, lastOffset, func(line string) {
 				fileTailWatcher.send(line)
@@ -108,6 +106,8 @@ loop:
 			}
 		}
 	}
+
+	ticker.Stop()
 
 	fileTailWatcher.onDispose()
 }

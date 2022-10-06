@@ -1,6 +1,6 @@
 // parser for /var/log/messages Centos 7
 //
-// sample of string:
+// sample:
 // Aug 28 03:31:36 kub-test-node1 dockerd: time="2022-08-28T03:31:36.810790504+03:00" level=info msg="ignoring event" moudle=libcontainerd namespace=moby topic=/tasks/delete type="*events.TaskDelete"
 
 
@@ -35,19 +35,28 @@ function messagesParser(str){
     var tags = getTags(str)
     var fields = getFields(str)
 
-    if ((new Date(fields.time)).getTime() > Date.now() - parseMessagesOnlyForLastNSeconds * 1000) {
+    var activeTags = {
+      "node"        :tags[5],
+      "process"     :tags[6]
+    }
+
+    for (key in fields) {
+      activeTags[key] = fields[key]
+    }
+
+    //if ((new Date(fields.time)).getTime() > Date.now() - parseMessagesOnlyForLastNSeconds * 1000) {
       result = {
-        Measurement: "testMeasurement",
-        Tags: {
-          node:tags[5],
-          process:tags[6]
-        },
-        Fields: fields,
+        Measurement: "/var/log/messages",
+        Tags: activeTags,
+        //Fields: fields,
+        Fields: {"zero":0},
         Timestamp: Date.parse(fields.time)
       }
 
-      return result
-    }
+      Console.Log(JSON.stringify(result))
+
+      //return result
+    //}
   }
 }
 

@@ -115,6 +115,7 @@ func (tailsWatcher *FilesTailsWatcherConfig) SendTo(receiver InputStringReceiver
 }
 
 func (filesTailsWatcher *FilesTailsWatcher) appendNotExistingFilesToWatch(current context.Context, filesNames []string) {
+
 	filesTailsWatcher.ready.Lock()
 
 	for _, fileName := range filesNames {
@@ -135,6 +136,7 @@ func (filesTailsWatcher *FilesTailsWatcher) appendNotExistingFilesToWatch(curren
 
 func (filesTailsWatcher *FilesTailsWatcher) deleteFileWatcher(fileName string) {
 	filesTailsWatcher.ready.Lock()
+
 	if _, found := filesTailsWatcher.files[fileName]; found {
 		delete(filesTailsWatcher.files, fileName)
 	}
@@ -149,21 +151,22 @@ func (filesTailsWatcher *FilesTailsWatcher) Go(current context.Context) {
 		close(filesTailsWatcher.input)
 	})
 
+	ticker := time.NewTicker(time.Duration(filesTailsWatcher.relistFilesIntervalMS) * time.Millisecond)
+
 loop:
 	for {
 		select {
-		case <-time.After(time.Duration(filesTailsWatcher.relistFilesIntervalMS) * time.Millisecond):
-			{ // query list of files that match to mask, and add them to dictionary
-				fullFilesPath, err := filepath.Abs(filesTailsWatcher.filesPath)
+		case <-ticker.C:
+			//fmt.Println(fmt.Sprintf("relistFilesIntervalMS: %v", filesTailsWatcher.relistFilesIntervalMS))
+			fullFilesPath, err := filepath.Abs(filesTailsWatcher.filesPath)
+			if err != nil {
+				current.Log(err)
+			} else {
+				relativeFileNames, err := recursiveFilesSearch(fullFilesPath, fullFilesPath, filesTailsWatcher.filesMask)
 				if err != nil {
 					current.Log(err)
 				} else {
-					relativeFileNames, err := recursiveFilesSearch(fullFilesPath, fullFilesPath, filesTailsWatcher.filesMask)
-					if err != nil {
-						current.Log(err)
-					} else {
-						filesTailsWatcher.appendNotExistingFilesToWatch(current, relativeFileNames)
-					}
+					filesTailsWatcher.appendNotExistingFilesToWatch(current, relativeFileNames)
 				}
 			}
 			break
@@ -176,6 +179,8 @@ loop:
 			}
 		}
 	}
+
+	ticker.Stop()
 }
 
 func recursiveFilesSearch(rootPluginsPath string, currentFullPath string, filter string) ([]string, error) {
